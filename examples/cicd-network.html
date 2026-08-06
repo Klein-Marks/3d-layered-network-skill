@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI/CD 流水线 3D 网络 · 可行性 Demo</title>
+<style>
+:root{
+  --bg:#0a0c12; --bg2:#10131c; --card:#181c28; --border:#252a38; --accent:#e07a35;
+  --nlabel:#0a0c12; --ewc:#7a766c; --ebg:rgba(10,12,18,.72);
+  --mono:"SF Mono","SF Mono",Consolas,Menlo,monospace;
+  --sans:"PingFang SC","Noto Sans SC","Source Han Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","SimSun","Times New Roman",serif;
+}
+/* 白天模式: 米黄底, 节点色切深暖系 */
+body.light{
+  --bg:#f5efe0; --bg2:#efe7d4; --card:#e9dfc9; --border:#d5c9a9; --accent:#b26a2a;
+  --nlabel:#fbf7ec; --ewc:#8a7a5a; --ebg:rgba(250,246,236,.85); color:#3a352c;
+}
+body.light #left{background:radial-gradient(ellipse 65% 55% at 48% 50%, #fbf6ea 0%, #ede4cf 82%)}
+body.light #legend,body.light #hint{background:var(--ebg)}
+body.light #cap{background:var(--bg)}
+body.light #cap li::before{background:#b26a2a}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:#e2e0d8;font-family:var(--sans);font-size:14px}
+#app{display:flex;height:100vh}
+#left{flex:1;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse 65% 55% at 48% 50%, #161b28 0%, #0a0c12 82%)}
+#hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:10;
+  font-size:11px;color:#7a766c;pointer-events:none;
+  background:rgba(10,12,18,.6);padding:5px 14px;border-radius:20px;border:1px solid var(--border)}
+#hint b{color:var(--accent)}
+#scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  user-select:none;-webkit-user-select:none}
+#scene *{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#legend{position:absolute;left:18px;bottom:16px;z-index:10;font-size:11px;
+  display:flex;gap:8px;flex-wrap:wrap;max-width:420px;
+  background:rgba(10,12,18,.75);padding:8px 12px;border-radius:8px;border:1px solid var(--border)}
+#legend .lg{display:inline-flex;align-items:center;gap:4px;color:#7a766c;cursor:pointer}
+#legend .lg:hover{color:#e2e0d8}
+#legend .lg.off{opacity:.25}
+#legend .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#ctrl{position:absolute;right:16px;top:16px;z-index:10;display:flex;flex-direction:column;gap:6px}
+#ctrl button{background:rgba(16,19,28,.8);border:1px solid var(--border);color:#7a766c;
+  width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px;font-family:var(--sans)}
+#ctrl button:hover{color:var(--accent);border-color:var(--accent)}
+.eword{position:absolute;transform:translate(-50%,-50%);font-size:10px;color:var(--ewc);
+  background:var(--ebg);padding:1px 7px;border-radius:9px;border:1px solid var(--border);
+  white-space:nowrap;pointer-events:none;z-index:620;letter-spacing:1px;font-family:var(--sans)}
+.eword.hl{color:var(--accent);border-color:var(--accent)}
+#right{width:420px;min-width:420px;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;background:var(--bg2)}
+#panel{flex:1;overflow-y:auto;padding:24px}
+#p-title{font-size:18px;font-weight:700;margin-bottom:2px;color:var(--accent);font-family:var(--serif)}
+#p-group{font-size:11px;color:#7a766c;margin-bottom:14px;letter-spacing:1px;text-transform:uppercase}
+#p-desc{font-size:13px;line-height:1.75;margin-bottom:16px;font-family:var(--serif)}
+#p-links .lk-title{color:#7a766c;margin-right:6px;font-size:12px}
+#p-links .lk{display:inline-block;background:var(--card);border:1px solid var(--border);
+  padding:3px 10px;border-radius:12px;margin:3px 3px 0 0;font-size:11px;cursor:pointer}
+#p-links .lk:hover{border-color:var(--accent);color:var(--accent)}
+#p-stat{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
+#p-stat .st{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;flex:1;min-width:70px}
+#p-stat .st .v{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent)}
+#p-stat .st .l{font-size:10px;color:#7a766c}
+#cap{height:42%;border-top:1px solid var(--border);overflow-y:auto;padding:18px 24px;background:var(--bg)}
+#cap h3{font-size:12px;color:#8a8a5e;margin:0 0 8px;letter-spacing:1px}
+#cap ul{list-style:none}
+#cap li{font-size:12px;padding:4px 0 4px 16px;position:relative;line-height:1.5;font-family:var(--serif)}
+#cap li::before{content:"";position:absolute;left:2px;top:10px;width:5px;height:5px;border-radius:50%;background:#3a6e5a}
+@media(max-width:900px){#right{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="left">
+<div id="hint">拖拽旋转 · 点击主节点展开该层 · 点击节点详情 · 滚轮缩放 · 双击聚焦 · 共 4 层 · 逻辑词连线</div>
+<div id="scene"></div>
+<div id="legend"></div>
+<div id="ctrl">
+<button onclick="toggleTheme()" title="日夜切换">☀</button>
+<button onclick="toggleSpin()" title="自动旋转">↻</button>
+<button onclick="resetView()" title="重置视角">⊙</button>
+</div>
+</div>
+<div id="right">
+<div id="panel">
+<h2 id="p-title">CI/CD 流水线 3D 网络 · 可行性 Demo</h2>
+<div id="p-group">CI/CD 四层 · 触发/构建/部署/运维 · 主节点骨架 + 点击展开</div>
+<div id="p-desc">4 个主节点对应 4 个 layer（编排/记忆/技能/上下文/成本/治理），初始只显示主节点与层间逻辑连线。点击主节点展开该层全部功能节点，节点间连线均附逻辑词（调度/沉淀/供给/注入/计量/约束/回卷…）。理论依据：Sugiyama 分层图绘制（IEEE TSMC 1981）+ 径向树布局 + 3D 分层扩展（Hong & Nikolov 2005）。</div>
+<div id="p-links"></div>
+<div id="p-stat"></div>
+</div>
+<div id="cap">
+<h3>升级后能做到的事</h3>
+<ul id="cap-list"></ul>
+</div>
+</div>
+</div>
+<script>
+// === 理论依据 ===
+// Sugiyama 框架: 节点按层级分配到水平行, 边向下
+// 径向树: 每代一个同心圆轨道, 后代在父扇区内分布
+// 3D 分层(Hong & Nikolov 2005): 层在 Z 轴, 每层 XY 平面布局
+// 融合: 每组一个 Z 平面, 组内节点在 XY 同心圆上均匀分布
+
+// === 6 层主节点 ===
+// c=黑夜色 cl=白天色 z=层高 info=四段详情(功能/微观设计/工作流作用/触发条件)
+const G = {
+  L1:{n:"L1 触发",c:"#e8a86e",cl:"#b26a2a",z:0,info:["流水线入口: 接收事件并决定是否启动构建","Webhook 监听 + 定时 + PR 事件分流, 去重与并发控制","CI/CD 大脑, 一切流水线由触发开始","代码提交/合并/定时/告警回调时"]},
+  L2:{n:"L2 构建",c:"#6ec4a8",cl:"#2e7d5b",z:2.5,info:["编译打包 + 质量门禁(静态检查/测试/依赖扫描)","编译->测试->扫描串并行, 任一失败即断线; 产物进制品库","把代码变成可发布制品, 质量闸门","触发通过后自动执行"]},
+  L3:{n:"L3 部署",c:"#7ea8e8",cl:"#3a5f9e",z:5,info:["灰度/蓝绿/滚动三种发布策略","金丝雀小流量->观察->全量; 蓝绿零停机切换; 滚动分批","制品上线通道, 发布即切换","构建通过后或人工审批后"]},
+  L4:{n:"L4 运维",c:"#e8789a",cl:"#a64060",z:7.5,info:["监控大盘 + 告警中心 + 自动回滚 + 日志聚合","指标阈值触发告警->自动回滚->重新触发流水线, 形成闭环","线上质量兜底与恢复","发布后持续; 指标异常时"]},
+};
+
+const N = [
+  {id:"webhook",g:"L1",n:"Webhook 监听",d:"Git 事件实时接入"},
+  {id:"cron",g:"L1",n:"定时任务",d:"夜间构建/巡检调度"},
+  {id:"pr",g:"L1",n:"PR 事件",d:"合并请求分流"},
+  {id:"compile",g:"L2",n:"编译打包",d:"多语言构建产物"},
+  {id:"test",g:"L2",n:"自动化测试",d:"单测+集成+E2E"},
+  {id:"lint",g:"L2",n:"静态检查",d:"风格与隐患扫描"},
+  {id:"scan",g:"L2",n:"依赖扫描",d:"CVE 与许可检查"},
+  {id:"canary",g:"L3",n:"灰度发布",d:"金丝雀小流量验证"},
+  {id:"blue",g:"L3",n:"蓝绿切换",d:"双环境零停机"},
+  {id:"roll",g:"L3",n:"滚动更新",d:"分批滚动替换"},
+  {id:"mono",g:"L4",n:"监控大盘",d:"指标/告警/链路聚合"},
+  {id:"alert",g:"L4",n:"告警中心",d:"阈值与规则告警"},
+  {id:"rbk",g:"L4",n:"自动回滚",d:"失败自动恢复上一版"},
+  {id:"log",g:"L4",n:"日志聚合",d:"全量日志检索"},
+];
+
+// 边: {a,b,w} a->b 方向, w=逻辑词
+// 层间 8 条(主节点之间, 始终显示)
+const MAIN_EDGES = [
+  {a:"L1",b:"L2",w:"拉取"},
+  {a:"L2",b:"L3",w:"推送"},
+  {a:"L3",b:"L4",w:"上报"},
+  {a:"L4",b:"L1",w:"告警"},
+  {a:"L2",b:"L4",w:"巡检"},
+];
+const E = [
+  {a:"webhook",b:"pr",w:"事件分流"},
+  {a:"webhook",b:"cron",w:"定时并流"},
+  {a:"pr",b:"test",w:"门禁"},
+  {a:"lint",b:"compile",w:"前置检查"},
+  {a:"compile",b:"test",w:"产物送测"},
+  {a:"scan",b:"compile",w:"产物扫描"},
+  {a:"canary",b:"alert",w:"灰度观察"},
+  {a:"blue",b:"canary",w:"分流切换"},
+  {a:"roll",b:"blue",w:"兜底切换"},
+  {a:"mono",b:"alert",w:"指标上报"},
+  {a:"alert",b:"rbk",w:"触发回滚"},
+  {a:"log",b:"mono",w:"日志入盘"},
+  {a:"rbk",b:"roll",w:"回滚执行"},
+  {a:"webhook",b:"canary",w:"紧急直发"},
+  {a:"alert",b:"webhook",w:"告警回环"},
+];
+
+const idx = {}; N.forEach((n,i)=>{n.i=i; idx[n.id]=i;});
+
+// === 子节点四段详情: [功能, 内部微观设计逻辑, 在本工作流中的作用, 触发条件] ===
+const INFO = {
+  webhook:["Git 事件实时接入(commit/PR/merge)","Webhook 端点 + 签名校验 + 事件去重, 触发上下文透传","流水线唯一外部入口","代码提交/合并时"],
+  cron:["定时触发(夜间构建/巡检)","cron 表达式 + 时区 + 错峰, 防叠加","周期性任务入口","每晚/每周定时"],
+  pr:["PR 事件分流(打开/更新/合入)","按分支与标签路由到不同流水线模板","合并请求自动化","PR 打开或更新时"],
+  compile:["多语言编译打包","并行分机构建 + 缓存复用 + 产物签名","产出可发布制品","代码合入后"],
+  test:["单测+集成+E2E 全链路","分层测试 + 失败即断 + 报告归档","质量门禁主闸","构建成功后"],
+  lint:["风格与静态隐患扫描","规则集 + 增量扫描 + 零容忍","代码风格闸门","编译前并行"],
+  scan:["依赖 CVE 与许可检查","SBOM 生成 + 漏洞库比对 + 阻断高危","供应链安全闸门","编译后并行"],
+  canary:["金丝雀小流量发布","5% 流量观察 10 分钟, 指标合格才全量","发布风险闸门","部署审批后"],
+  blue:["蓝绿双环境切换","路由整体切换, 秒级回退","零停机部署","灰度通过后"],
+  roll:["分批滚动替换","每批 20% 无感替换, 失败暂停","大集群发布方式","蓝绿资源不足时"],
+  mono:["指标/告警/链路三合一","Prometheus + 聚合查询 + 告警规则","线上可观测底座","发布后持续"],
+  alert:["阈值与规则告警","多级告警 + 抑制 + 通知路由","异常第一响应","指标越线时"],
+  rbk:["失败自动回滚","版本快照 + 自动触发上一版","线上恢复保障","告警确认异常时"],
+  log:["全量日志聚合检索","采集->清洗->索引, 秒级查询","排障依据","任意时刻"],
+};
+
+// 按组分组, 计算每组在 XY 平面的径向位置
+const groupNodes = {};
+N.forEach(n => {
+  if(!groupNodes[n.g]) groupNodes[n.g] = [];
+  groupNodes[n.g].push(n);
+});
+
+// 3D 位置: 主节点在层轴 (0,0,z), 子节点在层平面的同心圆上均匀分布
+// 投影居中: 投影时以节点云的 z 中心为缩放基准（不是绝对 z=0），
+// 保证节点云的三维中心投影到屏幕中心，主体真正居中
+const LAYER_SPACING = 44; // Z 层间距
+const BASE_RADIUS = 90;   // 组内最小半径
+const RADIUS_STEP = 68;   // 每增加一个节点半径增量
+const MAINS = Object.keys(G); // 主节点 id = 层键
+const P = {};
+MAINS.forEach((k, i) => {
+  // 主节点螺旋错开: 绕 Z 轴 60° 步进 + 半径随层递增, 避免沿中心线叠成一串
+  const ang = (i / MAINS.length) * Math.PI * 2 - Math.PI / 2;
+  P[k] = {x: Math.cos(ang) * (30 + i * 10), y: Math.sin(ang) * (30 + i * 10), z: G[k].z * LAYER_SPACING};
+});
+N.forEach(n => {
+  const grp = groupNodes[n.g];
+  const posInGroup = grp.indexOf(n);
+  const count = grp.length;
+  const z = G[n.g].z * LAYER_SPACING;
+  if(count === 1) { P[n.id] = {x:0, y:0, z:z}; return; }
+  const r = BASE_RADIUS + (count > 4 ? RADIUS_STEP : count * 8);
+  const angle = (posInGroup / count) * Math.PI * 2 - Math.PI / 2;
+  P[n.id] = {x: Math.cos(angle) * r, y: Math.sin(angle) * r, z: z};
+});
+
+// 节点云 z 中心在 render() 内动态计算（旋转后），此处不需要静态值
+
+// 状态
+let rotX = -0.35, rotY = 0.4, zoom = 1, selId = null, autoR = false, dragging = false, lx = 0, ly = 0, dark = true;
+const scene = document.getElementById('scene');
+const lgd = document.getElementById('legend');
+const expanded = new Set(); // 已展开的层
+const isMain = id => MAINS.includes(id);
+const isVisible = id => isMain(id) || expanded.has(N[idx[id]].g);
+const layerColor = k => dark ? G[k].c : G[k].cl;
+
+// 图例(6 层, 点击=展开/收起该层)
+MAINS.forEach(k => {
+  const el = document.createElement('div');
+  el.className = 'lg';
+  el.innerHTML = `<span class="dot" style="background:${G[k].c}"></span>${G[k].n.replace(/^L\d\s*/,'')}`;
+  el.onclick = () => {
+    if(expanded.has(k)){expanded.delete(k);}else{expanded.add(k);}
+    render();
+  };
+  lgd.appendChild(el);
+});
+
+// 3D 旋转矩阵: 先 rotateY 再 rotateX
+function rot3d(p, rx, ry) {
+  const cb = Math.cos(ry), sb = Math.sin(ry);
+  const x1 = p.x * cb + p.z * sb;
+  const z1 = -p.x * sb + p.z * cb;
+  const ca = Math.cos(rx), sa = Math.sin(rx);
+  const y1 = p.y * ca - z1 * sa;
+  const z2 = p.y * sa + z1 * ca;
+  return {x: x1, y: y1, z: z2};
+}
+
+// 透视投影: 基准在 render() 内动态计算(节点云旋转后中心), 此处不再定义
+
+function nodeRad(n, id) {
+  const rid = id || n.id;
+  const conns = E.filter(e => e.a === rid || e.b === rid).length
+    + MAIN_EDGES.filter(e => e.a === rid || e.b === rid).length;
+  return (16 + Math.min(conns * 2.5, 12)) * zoom;
+}
+
+function render() {
+  scene.innerHTML = '';
+  const cx = scene.clientWidth / 2;
+  const cy = scene.clientHeight / 2;
+
+  // 动态云中心: 可见节点(主节点常显 + 已展开层子节点)旋转后坐标的均值 (mx,my,mz)。
+  // 投影以云中心为基准 → 无论旋转角度/Z 平移, 节点云整体永远投影到屏幕正中,
+  // 透视缩放围绕云中心对称(前部放大、后部缩小)
+  const PERSP = 800;
+  const visRps = [];
+  N.forEach(n => { if(isVisible(n.id)) visRps.push(rot3d(P[n.id], rotX, rotY)); });
+  MAINS.forEach(k => visRps.push(rot3d(P[k], rotX, rotY)));
+  const mx = visRps.reduce((s,p)=>s+p.x,0) / visRps.length;
+  const my = visRps.reduce((s,p)=>s+p.y,0) / visRps.length;
+  const mz = visRps.reduce((s,p)=>s+p.z,0) / visRps.length;
+  const project = (rp) => {
+    const persp = PERSP / (PERSP + (rp.z - mz));
+    return {sx: (rp.x - mx) * persp * zoom, sy: (rp.y - my) * persp * zoom, depth: rp.z, persp: persp};
+  };
+
+  // 屏幕空间包围盒居中: 均值中心与包围盒中心在节点分布不对称时有偏差,
+  // 这里对可见节点投影点求包围盒中心, 得到平移量, 让包围盒严格居中
+  const pts = [];
+  N.forEach(n => { if(!isVisible(n.id)) return; const pr = project(rot3d(P[n.id], rotX, rotY)); pts.push(pr.sx, pr.sy); });
+  MAINS.forEach(k => { const pr = project(rot3d(P[k], rotX, rotY)); pts.push(pr.sx, pr.sy); });
+  const shX = (Math.min(...pts.filter((_,i)=>i%2===0)) + Math.max(...pts.filter((_,i)=>i%2===0))) / 2;
+  const shY = (Math.min(...pts.filter((_,i)=>i%2===1)) + Math.max(...pts.filter((_,i)=>i%2===1))) / 2;
+
+  // 边集合: 层间 8 条 + 子节点间 36 条 + 已展开层的承载边
+  const allEdges = [];
+  MAIN_EDGES.forEach(e => allEdges.push({a:e.a,b:e.b,w:e.w}));
+  E.forEach(e => allEdges.push({a:e.a,b:e.b,w:e.w}));
+  expanded.forEach(k => groupNodes[k].forEach(n => allEdges.push({a:k,b:n.id,w:"承载"})));
+
+  // 边
+  allEdges.forEach(ed => {
+    if(!isVisible(ed.a) || !isVisible(ed.b)) return;
+    const pa = project(rot3d(P[ed.a], rotX, rotY));
+    const pb = project(rot3d(P[ed.b], rotX, rotY));
+    const dx = pb.sx - pa.sx, dy = pb.sy - pa.sy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if(dist < 0.5) return;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    const isHl = (selId === ed.a || selId === ed.b);
+    const srcIsMain = isMain(ed.a);
+    const color = isHl ? (layerColor(isMain(ed.b)?ed.b:N[idx[ed.b]].g)) : (srcIsMain ? layerColor(ed.a) : layerColor(N[idx[ed.a]].g));
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute;left:${cx+pa.sx-shX}px;top:${cy+pa.sy-shY}px;width:${dist}px;height:${isHl?2:1}px;background:${color};opacity:${isHl?0.7:0.15};transform-origin:0 50%;transform:rotate(${angle}deg);pointer-events:none;z-index:${Math.round(Math.min(pa.depth,pb.depth)*0.5)+500}`;
+    scene.appendChild(el);
+    // 逻辑词标签: 边中点 + 法线方向偏移, 文字保持水平可读
+    const nx = -dy / dist * 9, ny = dx / dist * 9;
+    const lbl = document.createElement('div');
+    lbl.className = 'eword' + (isHl ? ' hl' : '');
+    lbl.style.cssText += `left:${cx+(pa.sx+pb.sx)/2-shX+nx}px;top:${cy+(pa.sy+pb.sy)/2-shY+ny}px`;
+    lbl.textContent = ed.w;
+    scene.appendChild(lbl);
+  });
+
+  // 节点: 主节点(层核心)大号带外环 + 子节点常规
+  const renderNode = (id, label, isM) => {
+    const rp = rot3d(P[id], rotX, rotY);
+    const pr = project(rp);
+    const base = nodeRad(isM ? null : N[idx[id]], id);
+    const rad = (isM ? base * 1.7 : base) * pr.persp;
+    const el = document.createElement('div');
+    const isSel = selId === id;
+    const col = isM ? layerColor(id) : layerColor(N[idx[id]].g);
+    el.style.cssText = `position:absolute;left:${cx+pr.sx-shX-rad}px;top:${cy+pr.sy-shY-rad}px;width:${rad*2}px;height:${rad*2}px;border-radius:50%;background:${col};border:${isM?'2.5px solid '+(dark?'rgba(255,255,255,.5)':'rgba(255,255,255,.7)'):'1.5px solid rgba(255,255,255,0.15)'};cursor:pointer;z-index:${Math.round(pr.depth)+1000};opacity:${Math.max(0.3,Math.min(1,0.4+pr.persp*0.6))};${isSel?'box-shadow:0 0 24px '+col+'80':isM?'box-shadow:0 0 0 4px '+col+'35':'box-shadow:none'};display:flex;align-items:center;justify-content:center;text-align:center`;
+    const fs = Math.max(6, Math.min(10, rad * (isM ? 0.30 : 0.32)));
+    const nm = isM ? label.replace(/^L\d\s*/,'') + (expanded.has(id)?' ▾':' ▸') : label;
+    el.innerHTML = `<span style="font-size:${fs}px;font-weight:${isM?700:600};color:var(--nlabel);text-shadow:0 1px 3px rgba(0,0,0,.5);pointer-events:none;font-family:var(--sans);white-space:nowrap">${nm}</span>`;
+    el.onclick = (e) => { e.stopPropagation(); if(isM) toggleLayer(id); select(id); };
+    el.ondblclick = (e) => { e.stopPropagation(); focusNode(id); };
+    scene.appendChild(el);
+  };
+  MAINS.forEach(k => renderNode(k, G[k].n, true));
+  N.forEach(n => { if(isVisible(n.id)) renderNode(n.id, n.n, false); });
+}
+
+// 交互
+scene.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; autoR = false; });
+window.addEventListener('mousemove', e => {
+  if(!dragging) return;
+  rotY += (e.clientX - lx) * 0.006;
+  rotX -= (e.clientY - ly) * 0.006;
+  rotX = Math.max(-1.3, Math.min(1.3, rotX));
+  lx = e.clientX; ly = e.clientY;
+  render();
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+scene.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom *= e.deltaY > 0 ? 0.92 : 1.08;
+  zoom = Math.max(0.4, Math.min(2.5, zoom));
+  render();
+}, {passive: false});
+scene.addEventListener('click', e => { if(e.target === scene) { selId = null; render(); updatePanel(null); } });
+
+function toggleLayer(k) {
+  if(expanded.has(k)) expanded.delete(k); else expanded.add(k);
+  render();
+}
+
+function toggleTheme() {
+  dark = !dark;
+  document.body.classList.toggle('light', !dark);
+  render();
+}
+
+function select(id) {
+  selId = id;
+  render();
+  updatePanel(id);
+}
+
+function updatePanel(id) {
+  const pt = document.getElementById('p-title'), pg = document.getElementById('p-group'),
+        pd = document.getElementById('p-desc'), pl = document.getElementById('p-links'),
+        ps = document.getElementById('p-stat');
+  if(!id) {
+    pt.textContent = 'CI/CD 流水线 3D 网络 · 可行性 Demo';
+    pg.textContent = 'CI/CD 四层 · 触发/构建/部署/运维 · 主节点骨架 + 点击展开';
+    pd.textContent = '4 个主节点对应流水线四阶段(触发/构建/部署/运维), 点击主节点展开该层功能节点, 所有连线附逻辑词。依据 3d-layered-network skill 生成, 验证方法论可迁移性。';
+    pl.innerHTML = ''; ps.innerHTML = '';
+    return;
+  }
+  // 详情来源: 主节点 G.info / 子节点 INFO
+  const info = isMain(id) ? G[id].info : (INFO[id] || null);
+  pt.textContent = isMain(id) ? G[id].n : N[idx[id]].n;
+  pg.textContent = (isMain(id) ? id : N[idx[id]].g) + ' 层 · Z=' + (isMain(id) ? G[id].z : G[N[idx[id]].g].z) + (isMain(id) ? (expanded.has(id) ? ' · 已展开' : ' · 点击展开') : '');
+  if(info) {
+    const seg = [['功能', info[0]], ['内部微观设计逻辑', info[1]], ['在本工作流中的作用', info[2]], ['触发条件', info[3]]];
+    pd.innerHTML = seg.map(([t,c]) => `<div style="margin:7px 0"><b style="color:var(--accent);font-size:12px">${t}</b><br><span style="font-size:13px;line-height:1.7">${c}</span></div>`).join('');
+  } else {
+    pd.textContent = N[idx[id]].d;
+  }
+  const rel = [];
+  allEdgesFor(id).forEach(e => { if(e.a===id) rel.push(e.b); if(e.b===id) rel.push(e.a); });
+  pl.innerHTML = '';
+  if(rel.length) { const t = document.createElement('span'); t.className='lk-title'; t.textContent='关联:'; pl.appendChild(t); }
+  [...new Set(rel)].forEach(rid => {
+    const s = document.createElement('span'); s.className = 'lk';
+    s.textContent = isMain(rid) ? G[rid].n : N[idx[rid]].n;
+    s.style.borderLeft = `3px solid ${layerColor(isMain(rid)?rid:N[idx[rid]].g)}`;
+    s.onclick = () => select(rid);
+    pl.appendChild(s);
+  });
+  ps.innerHTML = '';
+  const conn = rel.length, grp = isMain(id) ? groupNodes[id].length : N.filter(x => x.g === N[idx[id]].g).length;
+  [[conn,'关联'],[grp,'本层节点'],[isMain(id)?G[id].z:G[N[idx[id]].g].z,'Z层']].forEach(([v,l]) => {
+    const e = document.createElement('div'); e.className = 'st';
+    e.innerHTML = `<div class="v">${v}</div><div class="l">${l}</div>`;
+    ps.appendChild(e);
+  });
+}
+
+// 某节点的全部边(层间+子边+承载)
+function allEdgesFor(id) {
+  const res = [];
+  MAIN_EDGES.forEach(e => { if(e.a===id||e.b===id) res.push(e); });
+  E.forEach(e => { if(e.a===id||e.b===id) res.push(e); });
+  expanded.forEach(k => groupNodes[k].forEach(n => { if(k===id) res.push({a:k,b:n.id,w:'承载'}); if(n.id===id) res.push({a:k,b:n.id,w:'承载'}); }));
+  return res;
+}
+
+function focusNode(id) {
+  const p = P[id];
+  rotY = Math.atan2(p.x, p.z);
+  rotX = -Math.atan2(p.y, Math.sqrt(p.x*p.x + p.z*p.z));
+  render();
+}
+
+function toggleSpin() { autoR = !autoR; if(autoR) spin(); }
+function spin() { if(!autoR) return; rotY += 0.004; render(); requestAnimationFrame(spin); }
+function resetView() { rotX = -0.35; rotY = 0.4; zoom = 1; render(); }
+
+const CAPS = [
+  '事件驱动: Webhook/定时/PR 三入口统一分流',
+  '质量三闸门: 静态检查 + 测试 + 依赖扫描全自动',
+  '三策略发布: 灰度/蓝绿/滚动按场景选择',
+  '运维闭环: 监控->告警->回滚->重新触发流水线',
+  '全程逻辑词连线: 拉取/推送/上报/告警/巡检',
+  '双主题: 黑夜 + 米黄白天, 一键切换',
+];
+const cl = document.getElementById('cap-list');
+CAPS.forEach(c => { const li = document.createElement('li'); li.textContent = c; cl.appendChild(li); });
+
+// 初始化
+render();
+
+// 窗口resize
+window.addEventListener('resize', () => render());
+</script>
+</body>
+</html>
