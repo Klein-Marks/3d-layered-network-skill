@@ -6,7 +6,7 @@ version: 1.0.0
 
 # 3D 分层功能网络
 
-单文件 HTML，把"分层系统 + 功能节点 + 关联关系"呈现为可交互 3D 网络。参考实现：`E:\work_in_E\bili-reports\workflow-3d-network-2026-08-06.html`（工作流功能呈现网络）。
+单文件 HTML，把"分层系统 + 功能节点 + 关联关系"呈现为可交互 3D 网络。参考实现：`examples/workflow-network.html`（工作流功能呈现网络）。
 
 ## 适用场景
 
@@ -62,4 +62,4 @@ version: 1.0.0
 ## 参考
 
 - 理论：Sugiyama 分层图（IEEE TSMC 1981）、径向树、Hong & Nikolov 2005 3D 分层
-- 演示：`E:\work_in_E\bili-reports\workflow-3d-network-2026-08-06.html`
+- 演示：`examples/workflow-network.html`
