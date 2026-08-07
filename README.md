@@ -7,8 +7,8 @@ Zero dependencies. Open the HTML files directly in a browser.
 ## What you get
 
 - **Main-node skeleton first**: only the N layer cores are visible initially, connected by logic-word edges (调度/schedule, 沉淀/persist, 回卷/rollback, ...). Click a main node to expand its children.
-- **Three layout modes** (v2.0): spiral (pure layering), branch-merge (parallel branches from a root, merging downstream), linear (single pipeline).
-- **Tiered logic-word rules** (v2.0): main data-flow edges carry short verbs; carrier edges (main -> child) render lines only, no labels; child-to-child edges only when real data flows. Redundant paths (A->B->C already exists) are not drawn.
+- **Three layout modes**: spiral (pure layering), branch-merge (parallel branches from a root, merging downstream), linear (single pipeline).
+- **Tiered logic-word rules**: main data-flow edges carry short verbs; carrier edges (main -> child) render lines only, no labels; child-to-child edges only when real data flows. Redundant paths (A->B->C already exists) are not drawn.
 - **Progressive detail panel**: four-segment explanations per node — function / internal design logic / role in the workflow / trigger conditions.
 - **Day & night themes**: dark default + beige daylight theme, node colors switch per theme, CSS-variable driven.
 - **Guaranteed centering**: the 3D cloud stays screen-centered at any rotation angle (mean-center projection + bounding-box shift), a fix that survives perspective asymmetry.
@@ -20,7 +20,7 @@ SKILL.md                    The methodology as a reusable skill (Chinese)
 examples/
   workflow-network.html     Full reference: 6-layer AI workflow, 38 nodes (spiral layout)
   cicd-network.html         Feasibility demo: 4-layer CI/CD pipeline
-  branch-merge-network.html v2.0: dual-branch parallel architecture (branch-merge layout)
+  branch-merge-network.html Dual-branch parallel architecture (branch-merge layout)
 ```
 
 ## Quick start
